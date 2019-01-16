@@ -13,7 +13,6 @@
 
 namespace Iget\Correios\Helper;
 
-use Iget\Correios\Model\CotacoesFactory;
 use Iget\Correios\Model\ResourceModel\Cotacoes as ResourceModel;
 use Magento\Catalog\Model\ProductRepository;
 use Magento\Framework\App\Config\ScopeConfigInterface;
@@ -45,11 +44,6 @@ class Data extends AbstractHelper
     protected $obligatoryLogin = array(4162,40436,40444,81019,4669);
 
     /**
-     * @var CotacoesFactory
-     */
-    protected $cotacoesFactory;
-
-    /**
      * @var ResourceModel
      */
     protected $resourceModel;
@@ -68,19 +62,16 @@ class Data extends AbstractHelper
      * Data constructor.
      * @param ProductRepository $productRepository
      * @param ScopeConfigInterface $scopeConfig
-     * @param CotacoesFactory $cotacoesFactory
      * @param ResourceModel $resourceModel
      */
     public function __construct(
         ProductRepository $productRepository,
         ScopeConfigInterface $scopeConfig,
-        CotacoesFactory $cotacoesFactory,
         ResourceModel $resourceModel
     ) {
         $this->storeScope = ScopeInterface::SCOPE_STORE;
         $this->scopeConfig = $scopeConfig;
         $this->productRepository = $productRepository;
-        $this->cotacoesFactory = $cotacoesFactory;
         $this->resourceModel = $resourceModel;
         $writer = new Stream(BP . '/var/log/Iget_Correios.log');
         $this->logger = new Logger();
@@ -95,136 +86,32 @@ class Data extends AbstractHelper
     public function getMethodName($method)
     {
         $method = (int)$method;
-        if ($method === 40010 || $method === (int)$this->scopeConfig->getValue(
-            'correios_postingmethods_config/settings/sedex',
-            $this->storeScope
-        )) {
+        if ($method === 40010 || $method === (int) $this->getconfig('custom_post_methods/sedex')) {
             return "Sedex";
-        } elseif ($method === 41106 || $method === 4669 || $method === (int)$this->scopeConfig->getValue(
-            'correios_postingmethods_config/settings/pac',
-            $this->storeScope
-        )) {
-            return "PAC ";
-        } elseif ($method === 40215 || $method === (int)$this->scopeConfig->getValue(
-            'correios_postingmethods_config/settings/sedex10',
-            $this->storeScope
-        )) {
+        } elseif ($method === 41106 || $method === 4669 || $method === (int) $this->getconfig('custom_post_methods/pac')) {
+            return "PAC";
+        } elseif ($method === 40215 || $method === (int) $this->getconfig('custom_post_methods/sedex_10')) {
             return "Sedex 10";
-        } elseif ($method === 40290 || $method === (int)$this->scopeConfig->getValue(
-            'correios_postingmethods_config/settings/sedex_hoje',
-            $this->storeScope
-        )) {
+        } elseif ($method === 40290 || $method === (int) $this->getconfig('custom_post_methods/sedex_hoje')) {
             return "Sedex HOJE";
-        } elseif ($method === 40045 || $method === (int)$this->scopeConfig->getValue(
-            'correios_postingmethods_config/settings/sedex_cobrar',
-            $this->storeScope
-        )) {
+        } elseif ($method === 40045 || $method === (int) $this->getconfig('custom_post_methods/sedex_cobrar')) {
             return "Sedex a cobrar";
         } else {
-            return "Undefined";
+            return __("Unknown method");
         }
     }
 
     /**
-     * @param $service
-     * @param $weight
-     * @param $finalPostcode
-     * @return bool|mixed
+     * @param $key
+     * @param string $namespace
+     * @return mixed
      */
-    public function getServiceToPopulate($service, $weight, $finalPostcode)
+    public function getConfig($key, $namespace = 'carriers/Iget_Correios')
     {
-        $webserviceUrl = (string)$this->scopeConfig->getValue(
-            'carriers/Iget_Correios/webservice_url',
+        return $this->scopeConfig->getValue(
+            "{$namespace}/{$key}",
             $this->storeScope
         );
-        if ($webserviceUrl != "") {
-            $url = (string)$this->scopeConfig->getValue(
-                'carriers/Iget_Correios/webservice_url',
-                $this->storeScope
-            );
-        } else {
-            $url = "http://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx?StrRetorno=xml";
-        }
-        $login = (string)$this->scopeConfig->getValue(
-            'carriers/Iget_Correios/login',
-            $this->storeScope
-        );
-        $password = (string)$this->scopeConfig->getValue(
-            'carriers/Iget_Correios/password',
-            $this->storeScope
-        );
-        if ((int)$this->scopeConfig->getValue(
-            'carriers/Iget_Correios/default_height',
-            $this->storeScope
-        ) > 0) {
-            $defHeight = (int)$this->scopeConfig->getValue(
-                'carriers/Iget_Correios/default_height',
-                $this->storeScope
-            );
-        } else {
-            $defHeight = 2;
-        }
-        if ((int)$this->scopeConfig->getValue(
-            'carriers/Iget_Correios/default_width',
-            $this->storeScope
-        ) > 0) {
-            $defWidth = (int)$this->scopeConfig->getValue(
-                'carriers/Iget_Correios/default_width',
-                $this->storeScope
-            );
-        } else {
-            $defWidth = 16;
-        }
-        if ((bool)$this->scopeConfig->getValue(
-            'carriers/Iget_Correios/owner_hands',
-            $this->storeScope
-        ) === false) {
-            $ownerHands = 'N';
-        } else {
-            $ownerHands = 'S';
-        }
-        if ((bool)$this->scopeConfig->getValue(
-            'carriers/Iget_Correios/received_warning',
-            $this->storeScope
-        ) === false) {
-            $receivedWarning = 'N';
-        } else {
-            $receivedWarning = 'S';
-        }
-        $origPostcode = (string)$this->scopeConfig->getValue("shipping/origin/postcode", $this->storeScope);
-        $declaredValue = (bool)$this->scopeConfig->getValue(
-            'carriers/Iget_Correios/declared_value',
-            $this->storeScope
-        );
-        //Check if the service needs the login and password
-        if (in_array($service, $this->obligatoryLogin) === true && ($login==="" || $password==="")) {
-            $this->logMessage("Impossible to calculate the service ".$service.
-                " because the login/password isn't filled.");
-            return false;
-        }
-        if ($login!="") {
-            $url_d = $url . "&nCdEmpresa=" . $login . "&sDsSenha=" . $password . "&nCdFormato=1&nCdServico=" .
-                $service . "&nVlComprimento=" . $defWidth . "&nVlAltura=" . $defHeight . "&nVlLargura=" .
-                $defWidth . "&sCepOrigem=" . $origPostcode . "&sCdMaoPropria=" . $ownerHands . "&sCdAvisoRecebimento=" .
-                $receivedWarning . "&nVlPeso=" . $weight . "&sCepDestino=" . $finalPostcode;
-        } else {
-            $url_d = $url . "&nCdFormato=1&nCdServico=" . $service . "&nVlComprimento=" . $defWidth . "&nVlAltura=" .
-                $defHeight . "&nVlLargura=" . $defWidth . "&sCepOrigem=" . $origPostcode . "&sCdMaoPropria=" .
-                $ownerHands . "&sCdAvisoRecebimento=" . $receivedWarning . "&nVlPeso=" .
-                $weight . "&sCepDestino=" . $finalPostcode;
-        }
-        if ($declaredValue) {
-            $url_d = $url_d . "&nVlValorDeclarado=18";
-        }
-
-        $this->logMessage($url_d);
-        $urls = array($url_d);
-        $shippingQuotes = $this->getOnlineShippingQuotes($urls);
-        if (count($shippingQuotes) > 0) {
-            return $shippingQuotes[0];
-        } else {
-            return false;
-        }
     }
 
     /**
@@ -279,6 +166,9 @@ class Data extends AbstractHelper
                 curl_close($ch);
                 $content = ob_get_contents();
                 ob_end_clean();
+
+                var_dump($url_d); die();
+
                 if ($content) {
                     $xml = new \SimpleXMLElement($content);
                 }
@@ -448,7 +338,7 @@ class Data extends AbstractHelper
      */
     private function getAvailableBoxes()
     {
-        $availableBoxes = json_decode($this->getConfig('available_boxes'), true);
+        $availableBoxes = json_decode($this->getConfig('packages/available_boxes'), true);
 
         $availableBoxes = array_map(function($box, $id) {
             $box['id'] = $id;
@@ -716,130 +606,45 @@ class Data extends AbstractHelper
     }
 
     /**
-     * @param $collection
-     * @return array
-     */
-    private function updateTrackCollection($collection)
-    {
-        $updated = 0;
-        $errors = 0;
-        try {
-            if ($collection->count() > 0) {
-                foreach ($collection as $cotacao) {
-                    $cotacaoObj = $this->cotacoesFactory->create()->load($cotacao->getId());;
-                    $cotacaoValues = $this->getServiceToPopulate(
-                        $cotacaoObj->getServico(),
-                        $cotacaoObj->getPeso(),
-                        $cotacaoObj->getCepFim()
-                    );
-                    if ($cotacaoValues != false) {
-                        $now = new \DateTime();
-                        $cotacaoObj->setPrazo($cotacaoValues["prazo"])
-                            ->setValor($cotacaoValues["valor"])
-                            ->setUltimoUpdate($now->format('Y-m-d H:i:s'));
-                        if ($this->resourceModel->save($cotacaoObj)) {
-                            $updated++;
-                        } else {
-                            $errors++;
-                        }
-                    } else {
-                        //Try to get with the half postcode in the current postcode track
-                        $halfPostcode = ($cotacaoObj->getCepFim() -
-                            ($cotacaoObj->getCepFim() - $cotacaoObj->getCepInicio()) / 2);
-                        $cotacaoValues = $this->getServiceToPopulate(
-                            $cotacaoObj->getServico(),
-                            $cotacaoObj->getPeso(),
-                            $halfPostcode
-                        );
-                        if ($cotacaoValues != false) {
-                            $now = new \DateTime();
-                            $cotacaoObj->setPrazo($cotacaoValues["prazo"])
-                                ->setValor($cotacaoValues["valor"])
-                                ->setUltimoUpdate($now->format('Y-m-d H:i:s'));
-                            if ($cotacaoObj->save()) {
-                                $updated++;
-                            } else {
-                                $errors++;
-                            }
-                        } else {
-                            $errors++;
-                        }
-                    }
-                }
-            }
-        } catch (\Exception $ex) {
-            $this->logMessage($ex->getMessage());
-        }
-        return array($updated,$errors);
-    }
-
-    /**
      * @param (int)$methods
      * @return array
      */
-    public function getPostMethodCodes($methods)
+    public function getPostMethodCodes()
     {
+        $methods = explode(',', $this->getConfig('post_methods/enabled_methods'));
         $arrayMethods = array();
+
         foreach ($methods as $method) {
-            if ((int)$method === 4162 || (int)$method === 40010) {
-                if ($this->scopeConfig->getValue(
-                    'correios_postingmethods_config/settings/sedex',
-                    $this->storeScope
-                ) != "") {
-                    $arrayMethods[] = (string)$this->scopeConfig->getValue(
-                        'correios_postingmethods_config/settings/sedex',
-                        $this->storeScope
-                    );
+            $method = (int) $method;
+            if ($method === 4162 || $method === 40010) {
+                if ($this->getConfig('custom_post_methods/sedex') != "") {
+                    $arrayMethods[] = (int) $this->getConfig('custom_post_methods/sedex');
                 } else {
-                    $arrayMethods[] = (int)$method;
+                    $arrayMethods[] = $method;
                 }
-            } elseif ((int)$method===41106 || (int)$method===4669) {
-                if ($this->scopeConfig->getValue(
-                    'correios_postingmethods_config/settings/pac',
-                    $this->storeScope
-                ) != "") {
-                    $arrayMethods[] = (string)$this->scopeConfig->getValue(
-                        'correios_postingmethods_config/settings/pac',
-                        $this->storeScope
-                    );
+            } elseif ($method===41106 || $method===4669) {
+                if ($this->getConfig('custom_post_methods/pac') != "") {
+                    $arrayMethods[] = (int) $this->getConfig('custom_post_methods/pac');
                 } else {
-                    $arrayMethods[] = (int)$method;
+                    $arrayMethods[] = $method;
                 }
-            } elseif ((int)$method===40215) {
-                if ($this->scopeConfig->getValue(
-                    'correios_postingmethods_config/settings/sedex10',
-                    $this->storeScope
-                ) != "") {
-                    $arrayMethods[] = (string)$this->scopeConfig->getValue(
-                        'correios_postingmethods_config/settings/sedex10',
-                        $this->storeScope
-                    );
+            } elseif ($method===40215) {
+                if ($this->getConfig('custom_post_methods/sedex_10') != "") {
+                    $arrayMethods[] = (int) $this->getConfig('custom_post_methods/sedex_10');
                 } else {
-                    $arrayMethods[] = (int)$method;
+                    $arrayMethods[] = $method;
                 }
-            } elseif ((int)$method===40290) {
-                if ($this->scopeConfig->getValue(
-                    'correios_postingmethods_config/settings/sedex_hoje',
-                    $this->storeScope
-                ) != "") {
-                    $arrayMethods[] = (string)$this->scopeConfig->getValue(
-                        'correios_postingmethods_config/settings/sedex_hoje',
-                        $this->storeScope
-                    );
+            } elseif ($method===40290) {
+                if ($this->getConfig('custom_post_methods/sedex_hoje') != "") {
+                    $arrayMethods[] = (int) $this->getConfig('custom_post_methods/sedex_hoje');
                 } else {
-                    $arrayMethods[] = (int)$method;
+                    $arrayMethods[] = $method;
                 }
-            } elseif ((int)$method===40045) {
-                if ($this->scopeConfig->getValue(
-                    'correios_postingmethods_config/settings/sedex_cobrar',
-                    $this->storeScope
-                ) != "") {
-                    $arrayMethods[] = (string)$this->scopeConfig->getValue(
-                        'correios_postingmethods_config/settings/sedex_cobrar',
-                        $this->storeScope
-                    );
+            } elseif ($method===40045) {
+                if ($this->getConfig('custom_post_methods/sedex_cobrar') != "") {
+                    $arrayMethods[] = (int) $this->getConfig('custom_post_methods/sedex_cobrar');
                 } else {
-                    $arrayMethods[] = (int)$method;
+                    $arrayMethods[] = $method;
                 }
             }
         }
@@ -901,15 +706,36 @@ class Data extends AbstractHelper
     }
 
     /**
-     * @param $key
-     * @param string $namespace
-     * @return mixed
+     * Merge all packages into a single package by volume
+     * @param array $packages
+     * @return array
      */
-    protected function getConfig($key, $namespace = 'carriers/Iget_Correios')
+    public function mergePackages(array $packages)
     {
-        return $this->scopeConfig->getValue(
-            "{$namespace}/{$key}",
-            $this->storeScope
-        );
+        if (count($packages) <= 1) {
+            return $packages;
+        }
+
+        $volume = 0;
+        $weight = 0;
+        $value = 0;
+
+        foreach ($packages as $package) {
+            $volume += $package['width'] * $package['height'] * $package['depth'];
+            $weight += $package['weight'];
+            $value += $package['value'];
+        }
+
+        $side = round(pow($volume, 1/3));
+
+        return [
+            [
+                'width' => $side,
+                'height' => $side,
+                'depth' => $side,
+                'weight' => $weight,
+                'value' => $value,
+            ]
+        ];
     }
 }

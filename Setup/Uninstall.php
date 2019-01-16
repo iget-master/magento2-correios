@@ -21,6 +21,7 @@ use Magento\Eav\Setup\EavSetupFactory;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\ModuleDataSetupInterface;
 use Magento\Framework\DB\Ddl\Table;
+use Magento\Framework\Setup\SchemaSetupInterface;
 use Magento\Framework\Setup\UninstallInterface;
 
 class Uninstall implements UninstallInterface
@@ -39,16 +40,18 @@ class Uninstall implements UninstallInterface
     }
 
     /**
-     * @param ModuleDataSetupInterface $setup
+     * Invoked when remove-data flag is set during module uninstall.
+     *
+     * @param SchemaSetupInterface $setup
      * @param ModuleContextInterface $context
-     * @throws \Zend_Db_Exception
+     * @return void
      */
-    public function uninstall(ModuleDataSetupInterface $setup, ModuleContextInterface $context)
+    public function uninstall(SchemaSetupInterface $setup, ModuleContextInterface $context)
     {
         $setup->startSetup();
 
         /** @var EavSetup $eavSetup */
-        $eavSetup = $this->eavSetupFactory->create(['setup' => $setup]);
+        $eavSetup = $this->eavSetupFactory->create();
 
         $eavSetup->removeAttribute(
             Product::ENTITY,

@@ -13,18 +13,18 @@
 
 namespace Iget\Correios\Setup;
 
-use Iget\Correios\Model\Entity\Attribute\Source\AvailableBoxes;
 use Magento\Catalog\Model\Product;
 use Magento\Catalog\Model\Product\Type;
 use Magento\Catalog\Model\ResourceModel\Eav\Attribute;
-use Magento\Eav\Setup\EavSetup;
 use Magento\Eav\Setup\EavSetupFactory;
+use Magento\Framework\Setup\InstallDataInterface;
+use Magento\Framework\Setup\InstallSchemaInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\ModuleDataSetupInterface;
 use Magento\Framework\DB\Ddl\Table;
-use Magento\Framework\Setup\UpgradeDataInterface;
+use Magento\Framework\Setup\SchemaSetupInterface;
 
-class UpgradeData implements UpgradeDataInterface
+class InstallSchema implements InstallSchemaInterface
 {
     /**
      * @var \Magento\Eav\Setup\EavSetupFactory
@@ -32,33 +32,17 @@ class UpgradeData implements UpgradeDataInterface
     private $eavSetupFactory;
 
     /**
-     * @param EavSetupFactory $eavSetupFactory
-     */
-    public function __construct(EavSetupFactory $eavSetupFactory)
-    {
-        $this->eavSetupFactory = $eavSetupFactory;
-    }
-
-    /**
-     * Upgrades data for a module
+     * Installs DB schema for a module
      *
-     * @param ModuleDataSetupInterface $setup
+     * @param SchemaSetupInterface $setup
      * @param ModuleContextInterface $context
      * @return void
+     * @throws \Zend_Db_Exception
      */
-    public function upgrade(ModuleDataSetupInterface $setup, ModuleContextInterface $context)
+    public function install(SchemaSetupInterface $setup, ModuleContextInterface $context)
     {
         $setup->startSetup();
 
-        if (version_compare($context->getVersion(), '1.0.1') < 0) {
-            $this->migrate_1_0_1($setup, $context);
-        }
-
         $setup->endSetup();
-    }
-
-    private function migrate_1_0_1(ModuleDataSetupInterface $setup, ModuleContextInterface $context)
-    {
-
     }
 }

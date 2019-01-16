@@ -34,6 +34,8 @@ use Iget\Correios\Model\CotacoesRepository;
 
 class Correios extends AbstractCarrier implements CarrierInterface
 {
+    const WEBSERVICE_URL = "http://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx?StrRetorno=xml";
+
     protected $_code = 'correios';
     protected $_scopeConfig;
     protected $_storeScope;
@@ -42,19 +44,13 @@ class Correios extends AbstractCarrier implements CarrierInterface
     protected $_enabled;
     protected $_destinationPostCode;
     protected $_weight;
-    protected $_url;
     protected $_login;
     protected $_password;
-    protected $_defaultHeight;
-    protected $_defaultWidth;
-    protected $_defaultDepth;
     protected $_weightType;
     protected $_postingMethods;
-    protected $_deleteCodes;
     protected $_ownerHands;
     protected $_proofOfDelivery;
     protected $_declaredValue;
-    protected $_maxWeight;
     protected $_packageValue;
     protected $_cubic;
     protected $_origPostcode;
@@ -63,6 +59,8 @@ class Correios extends AbstractCarrier implements CarrierInterface
     protected $_freeShippingMessage;
     protected $_statusFactory;
     protected $_handlingFee;
+    private $_availableBoxes;
+    private $_mergePackages;
 
     //Shipping Result
     protected $_result;
@@ -96,10 +94,6 @@ class Correios extends AbstractCarrier implements CarrierInterface
      */
     protected $_rateMethodFactory;
 
-    /**
-     * @var
-     */
-    private $_availableBoxes;
 
     /**
      * Correios constructor.
@@ -184,6 +178,41 @@ class Correios extends AbstractCarrier implements CarrierInterface
         $this->_destinationPostCode = $this->_helper->formatZip($request->getDestPostcode());
 
         $packages = $this->_helper->getPackages($this->_session->getQuote());
+
+        if ($this->_mergePackages) {
+            $packages = $this->_helper->mergePackages($packages);
+        }
+
+        $methods = [];
+
+        foreach ($packages as $package) {
+            // @todo: Parei aqui. Não faz sentido que seja feita uma requisição à API para cada metodo de envio.
+            // Também é interessante implementar um cache destas requisições, aos moldes do que o módulo base
+            // tinha.
+            $quotes = $this->_helper->getOnlineShippingQuotes(
+                $this->generateRequestUrl($package)
+            );
+
+            foreach ($quotes as $quote) {
+                $methodCode = (string) $quote['servico_codigo'];
+
+                if (!array_key_exists($methodCode, $methods)) {
+                    $methods[$methodCode] = [
+                        'name' => 0,
+                        'days' => 0,
+                        'value' => 0,
+                    ];
+                }
+
+                $methods[$methodCode]['name'] = $quote['servico'];
+                $methods[$methodCode]['value'] += $quote['valor'];
+                $methods[$methodCode]['days'] = max($quote['prazo'], $methods[$methodCode]['days']);
+            }
+
+            var_dump('package');
+        }
+
+        var_dump($methods);
 
         return $result;
 
@@ -362,13 +391,14 @@ class Correios extends AbstractCarrier implements CarrierInterface
     }
 
     /**
-     * @param $request
+     * @param $package
      * @return array
      */
-    protected function generateRequestUrl($request)
+    protected function generateRequestUrl($package)
     {
+        $arrayConsult = [];
+
         if (count($this->_postingMethods)>0) {
-            $arrayConsult = array();
             foreach ($this->_postingMethods as $_method) {
                 if ($this->_cubic<=10) {
                     $correiosWeight = max($this->_weight, $this->_cubic);
@@ -376,27 +406,27 @@ class Correios extends AbstractCarrier implements CarrierInterface
                     $correiosWeight = $this->_cubic;
                 }
 
-                $url_d = $this->_url;
+                $url_d = static::WEBSERVICE_URL;
 
                 if ($this->_login != "") {
                     $url_d .= "&nCdEmpresa=" . $this->_login . "&sDsSenha=" . $this->_password;
                 }
-
                 $url_d .= "&nCdFormato=1&nCdServico=" . $_method . "&nVlComprimento=" .
-                    $this->_defaultWidth . "&nVlAltura=" . $this->_defaultHeight . "&nVlLargura=" .
-                    $this->_defaultWidth . "&sCepOrigem=" . $this->_origPostcode . "&sCdMaoPropria=" .
+                    $package['depth'] . "&nVlAltura=" . $package['height'] . "&nVlLargura=" .
+                    $package['width'] . "&sCepOrigem=" . $this->_origPostcode . "&sCdMaoPropria=" .
                     $this->_ownerHands . "&sCdAvisoRecebimento=" . $this->_proofOfDelivery . "&nVlPeso=" .
-                    $correiosWeight . "&sCepDestino=" . $this->_destinationPostCode;
+                    $package['weight'] . "&sCepDestino=" . $this->_destinationPostCode;
 
                 if ($this->_declaredValue) {
-                    $url_d .= "&nVlValorDeclarado=" . $request->getPackageValue();
+                    $url_d .= "&nVlValorDeclarado=" . $package['value'];
                 }
 
                 $arrayConsult[] = $url_d;
                 $this->_helper->logMessage($url_d);
             }
-            return $arrayConsult;
         }
+
+        return $arrayConsult;
     }
 
     /**
@@ -406,10 +436,7 @@ class Correios extends AbstractCarrier implements CarrierInterface
      */
     protected function getConfig($key, $namespace = 'carriers/Iget_Correios')
     {
-        return $this->_scopeConfig->getValue(
-            "{$namespace}/{$key}",
-            $this->_storeScope
-        );
+        return $this->_helper->getConfig($key, $namespace);
     }
 
     /**
@@ -417,24 +444,18 @@ class Correios extends AbstractCarrier implements CarrierInterface
      */
     protected function prepare()
     {
-        $this->_enabled = $this->getConfig('active');
-        $this->_availableBoxes = $this->getConfig('available_boxes');
-        $this->_url = $this->getConfig('webservice_url') ?? "http://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx?StrRetorno=xml";
-        $this->_login = $this->getConfig('login');
-        $this->_password = $this->getConfig('password');
-        $this->_defaultHeight = $this->getConfig('default_height');
-        $this->_defaultWidth = $this->getConfig('default_width');
-        $this->_defaultDepth = $this->getConfig('default_depth');
-        $this->_postingMethods = $this->_helper->getPostMethodCodes(explode(',', $this->getConfig('posting_methods')));
-        $this->_deleteCodes = explode(",", "008,-10,16");
-        $this->_ownerHands = $this->getConfig('owner_hands') == 0 ? 'N' : 'Y';
-        $this->_proofOfDelivery = $this->getConfig('proof_of_delivery') == 0 ? 'N' : 'Y';
-        $this->_freeShippingMessage = $this->getConfig('free_shipping_message');
+        $this->_enabled = $this->getConfig('general/active');
+        $this->_proofOfDelivery = $this->getConfig('general/proof_of_delivery') == 0 ? 'N' : 'Y';
+        $this->_freeShippingMessage = $this->getConfig('general/free_shipping_message');
+        $this->_declaredValue = $this->getConfig('general/declared_value');
+        $this->_ownerHands = $this->getConfig('general/owner_hands') == 0 ? 'N' : 'Y';
+        $this->_handlingFee = $this->getConfig('general/handling_fee') ?? 0;
+        $this->_availableBoxes = $this->getConfig('packages/available_boxes');
+        $this->_mergePackages = $this->getConfig('packages/merge_packages') != 0;
+        $this->_login = $this->getConfig('contract/login');
+        $this->_password = $this->getConfig('contract/password');
+        $this->_postingMethods = $this->_helper->getPostMethodCodes();
         $this->_origPostcode = $this->getConfig('postcode', 'shipping/origin');
-        $this->_declaredValue = $this->getConfig('declared_value');
-        $this->_maxWeight = $this->getConfig('max_weight');
-        $this->_freeMethod = $this->getConfig('posting_free_method');
-
-        $this->_handlingFee = $this->getConfig('handling_fee') ?? 0;
+        $this->_freeMethod = $this->getConfig('post_methods/free_method');
     }
 }

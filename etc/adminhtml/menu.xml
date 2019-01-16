@@ -3,47 +3,42 @@
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
     <menu>
 
-        <!-- IGET Media Menu -->
-        <add id="Iget_Correios::iget_general"
+        <!-- IGET Main Menu -->
+        <!-- @todo: Move this main menu to a main package -->
+        <add id="Iget_Correios::main_menu"
              title="IGET"
              module="Iget_Correios"
              sortOrder="40"
-             resource="Iget_Correios::iget_general"
+             resource="Iget_Correios::main_menu"
         />
 
-        <!-- Correios Top Menu -->
-        <add id="Iget_Correios::correios_menutop"
+        <!-- Here just to prevent "Iget_Correios::correios_menu" being hide -->
+        <!-- remove this when other items are under main_menu. -->
+        <add id="Iget_Correios::placeholder"
+             title="IGET"
+             translate="title"
+             module="Iget_Correios"
+             sortOrder="50"
+             parent="Iget_Correios::main_menu"
+             resource="Iget_Correios::placeholder"
+        />
+
+        <!-- Correios Menu -->
+        <add id="Iget_Correios::correios_menu"
              title="Correios"
              module="Iget_Correios"
              sortOrder="1"
-             resource="Iget_Correios::correios_menutop"
-             parent="Iget_Correios::iget_general"
+             resource="Iget_Correios::correios_menu"
+             parent="Iget_Correios::main_menu"
         />
 
-        <!-- Correios Submenu -->
-        <add id="Iget_Correios::correios_menuoption1"
-             title="Postcode Tracks"
-             module="Iget_Correios"
-             sortOrder="2"
-             resource="Iget_Correios::correios_menuoption1"
-             parent="Iget_Correios::correios_menutop"
-             action="correios/cotacoes/index"
-        />
-        <add id="Iget_Correios::correios_menuoption2"
-             title="Shipping Method Configuration"
+        <add id="Iget_Correios::carrier_configurations"
+             title="Configurations"
              module="Iget_Correios"
              sortOrder="3"
-             resource="Iget_Correios::correios_menuoption2"
-             parent="Iget_Correios::correios_menutop"
+             resource="Iget_Correios::carrier_configurations"
+             parent="Iget_Correios::correios_menu"
              action="adminhtml/system_config/edit/section/carriers/"
-        />
-        <add id="Iget_Correios::correios_menuoption3"
-             title="Post Methods Configuration"
-             module="Iget_Correios"
-             sortOrder="4"
-             resource="Iget_Correios::correios_menuoption3"
-             parent="Iget_Correios::correios_menutop"
-             action="adminhtml/system_config/edit/section/correios_postingmethods_config/"
         />
     </menu>
 </config>
