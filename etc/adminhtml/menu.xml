@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
+    <menu>
+
+        <!-- IGET Media Menu -->
+        <add id="Iget_Correios::iget_general"
+             title="IGET"
+             module="Iget_Correios"
+             sortOrder="40"
+             resource="Iget_Correios::iget_general"
+        />
+
+        <!-- Correios Top Menu -->
+        <add id="Iget_Correios::correios_menutop"
+             title="Correios"
+             module="Iget_Correios"
+             sortOrder="1"
+             resource="Iget_Correios::correios_menutop"
+             parent="Iget_Correios::iget_general"
+        />
+
+        <!-- Correios Submenu -->
+        <add id="Iget_Correios::correios_menuoption1"
+             title="Postcode Tracks"
+             module="Iget_Correios"
+             sortOrder="2"
+             resource="Iget_Correios::correios_menuoption1"
+             parent="Iget_Correios::correios_menutop"
+             action="correios/cotacoes/index"
+        />
+        <add id="Iget_Correios::correios_menuoption2"
+             title="Shipping Method Configuration"
+             module="Iget_Correios"
+             sortOrder="3"
+             resource="Iget_Correios::correios_menuoption2"
+             parent="Iget_Correios::correios_menutop"
+             action="adminhtml/system_config/edit/section/carriers/"
+        />
+        <add id="Iget_Correios::correios_menuoption3"
+             title="Post Methods Configuration"
+             module="Iget_Correios"
+             sortOrder="4"
+             resource="Iget_Correios::correios_menuoption3"
+             parent="Iget_Correios::correios_menutop"
+             action="adminhtml/system_config/edit/section/correios_postingmethods_config/"
+        />
+    </menu>
+</config>
