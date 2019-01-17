@@ -167,8 +167,6 @@ class Data extends AbstractHelper
                 $content = ob_get_contents();
                 ob_end_clean();
 
-                var_dump($url_d); die();
-
                 if ($content) {
                     $xml = new \SimpleXMLElement($content);
                 }

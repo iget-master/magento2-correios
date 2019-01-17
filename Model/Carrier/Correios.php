@@ -34,7 +34,7 @@ use Iget\Correios\Model\CotacoesRepository;
 
 class Correios extends AbstractCarrier implements CarrierInterface
 {
-    const WEBSERVICE_URL = "http://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx?StrRetorno=xml";
+    const WEBSERVICE_URL = "http://ws1.correios.com.br/calculador/CalcPrecoPrazo.aspx?StrRetorno=xml";
 
     protected $_code = 'correios';
     protected $_scopeConfig;
@@ -153,7 +153,7 @@ class Correios extends AbstractCarrier implements CarrierInterface
 
     /**
      * @param RateRequest $request
-     * @return bool|\Magento\Framework\DataObject|null
+     * @return bool|\Magento\Framework\DataObject|\Magento\Shipping\Model\Rate\Result|null
      * @throws \Magento\Framework\Exception\NoSuchEntityException
      */
     public function collectRates(RateRequest $request)
@@ -186,9 +186,7 @@ class Correios extends AbstractCarrier implements CarrierInterface
         $methods = [];
 
         foreach ($packages as $package) {
-            // @todo: Parei aqui. Não faz sentido que seja feita uma requisição à API para cada metodo de envio.
-            // Também é interessante implementar um cache destas requisições, aos moldes do que o módulo base
-            // tinha.
+            // @todo: encontrar uma forma de fazer o cache das respostas deste método
             $quotes = $this->_helper->getOnlineShippingQuotes(
                 $this->generateRequestUrl($package)
             );
@@ -209,148 +207,29 @@ class Correios extends AbstractCarrier implements CarrierInterface
                 $methods[$methodCode]['days'] = max($quote['prazo'], $methods[$methodCode]['days']);
             }
 
-            var_dump('package');
         }
 
-        var_dump($methods);
+        foreach ($methods as $methodCode => $method) {
+            $rateMethod = $this->_rateMethodFactory->create();
+            $rateMethod->setCarrier('correios');
+            $rateMethod->setCarrierTitle($this->getConfig('carriers/Iget_Correios/general/name') ?? "Correios");
+            $rateMethod->setMethod('correios-' . $methodCode);
+            $rateMethod->setMethodTitle($method['name']);
 
-        return $result;
+            if ($request->getFreeShipping() && $this->_freeMethod == $methodCode) {
+                $rateMethod->setPrice(0);
 
-
-//        $this->_packageValue = $request->getBaseCurrency()->convert(
-//            $request->getPackageValue(),
-//            $request->getPackageCurrency()
-//        );
-
-
-
-        if (!$this->_helper->checkWeightRange($request)) {
-            $this->_helper->logMessage("Invalid Weight in checkWeightRange");
-            return false;
-        }
-
-        if ($this->_helper->getCubicWeight($this->_session->getQuote()) == 0) {
-            $this->_helper->logMessage("Invalid Weight in getCubicWeight");
-            return false;
-        } else {
-            $this->_cubic = $this->_helper->getCubicWeight($this->_session->getQuote());
-        }
-
-        $correiosMethods = array();
-        if (in_array($this->_functionMode, [
-            FunctionMode::MODE_HYBRID,
-            FunctionMode::MODE_ONLINE,
-        ])) {
-            $correiosMethods = $this->_helper->getOnlineShippingQuotes(
-                $this->generateRequestUrl($request)
-            );
-        }
-
-        if ($request->getFreeShipping() == true) {
-            $this->_freeShipping = true;
-        } else {
-            $this->_freeShipping = false;
-        }
-        $invalidPostcodeChars = array("-",".");
-        $postcodeNumber = str_replace($invalidPostcodeChars, "", $this->_destinationPostCode);
-        //If not available online get offline
-        if (($this->_functionMode == 2 && count($correiosMethods) != count($this->_postingMethods))
-            || $this->_functionMode == 1) {
-            $deliveryMessage = $this->_scopeConfig->getValue(
-                "carriers/Iget_Correios/deliverydays_message",
-                $this->_storeScope
-            );
-            if ($deliveryMessage=="") {
-                $deliveryMessage = "%s - Em média %d dia(s)";
-            }
-            $showDeliveryDays = $this->_scopeConfig->getValue(
-                "carriers/Iget_Correios/show_deliverydays",
-                $this->_storeScope
-            );
-            $addDeliveryDays = (int)$this->_scopeConfig->getValue(
-                "carriers/Iget_Correios/add_deliverydays",
-                $this->_storeScope
-            );
-            foreach ($this->_postingMethods as $method) {
-                $haveToGetOffline = true;
-                foreach ($correiosMethods as $onlineMethods) {
-                    if ($onlineMethods["servico"] == $method && ($onlineMethods["valor"] > 0 &&
-                            $onlineMethods["prazo"]>0)) {
-                        $haveToGetOffline = false;
-                    }
+                if ($this->_freeShippingMessage) {
+                    $rateMethod->setMethodTitle($method['name'] . " ({$this->_freeShippingMessage})");
                 }
-                if ($haveToGetOffline) {
-                    if ($this->_cubic<=10) {
-                        $correiosWeight = max($this->_weight, $this->_cubic);
-                    } else {
-                        $correiosWeight = $this->_cubic;
-                    }
 
-                    if (is_int($correiosWeight)==false) {
-                        if ($correiosWeight > 0.5) {
-                            $correiosWeight = round($correiosWeight);
-                        } else {
-                            $correiosWeight = 0.3;
-                        }
-                    }
-                    $cotacaoOffline = $this->_cotacoes->getCollection()
-                        ->addFieldToFilter('cep_inicio', ["lteq" => $postcodeNumber])
-                        ->addFieldToFilter('cep_fim', ["gteq" => $postcodeNumber])
-                        ->addFilter("servico", $method)
-                        ->addFilter("peso", $correiosWeight)
-                        ->getFirstItem();
-                    if ($cotacaoOffline) {
-                        if ($cotacaoOffline->getData()) {
-                            if ($cotacaoOffline->getValor()>0) {
-                                $data = array();
-                                if ($showDeliveryDays==0) {
-                                    $data['servico'] = $this->_helper->getMethodName($cotacaoOffline->getServico());
-                                } else {
-                                    $data['servico'] = sprintf(
-                                        $deliveryMessage,
-                                        $this->_helper->getMethodName($cotacaoOffline->getServico()),
-                                        (int)$cotacaoOffline->getPrazo() + $addDeliveryDays
-                                    );
-                                }
-                                $data['valor'] = str_replace(
-                                    ",",
-                                    ".",
-                                    $cotacaoOffline->getValor()
-                                ) + $this->_handlingFee;
-                                $data['prazo'] = $cotacaoOffline->getPrazo() + $addDeliveryDays;
-                                $data['servico_codigo'] = $cotacaoOffline->getServico();
-                                $correiosMethods[] = $data;
-                            }
-                        }
-                    }
-                }
+            } else {
+                $rateMethod->setPrice($method['value'] + $this->_handlingFee);
             }
+
+            $result->append($rateMethod);
         }
-        foreach ($correiosMethods as $correiosMethod) {
-            if ($correiosMethod["valor"] > 0 && $this->validateSameRegion($postcodeNumber, $correiosMethod['servico_codigo'])) {
-                $method = $this->_rateMethodFactory->create();
-                $method->setCarrier('correios');
-                $method->setCarrierTitle($this->_scopeConfig->getValue(
-                    'carriers/Iget_Correios/name',
-                    $this->_storeScope
-                ));
-                $method->setMethod('correios' . $correiosMethod['servico_codigo']);
-                if ($this->_freeShipping == true && $correiosMethod["servico_codigo"] == $this->_freeMethod) {
-                    if ($this->_freeShippingMessage != "") {
-                        $method->setMethodTitle("[" . $this->_freeShippingMessage . "] " . $correiosMethod['servico']);
-                    } else {
-                        $method->setMethodTitle($correiosMethod['servico']);
-                    }
-                    $amount = 0;
-                } else {
-                    $amount = $correiosMethod['valor'];
-                    $method->setMethodTitle($correiosMethod['servico']);
-                }
-                $method->setPrice($amount);
-                $method->setCost($amount);
-                $result->append($method);
-            }
-        }
+
         return $result;
     }
 
@@ -399,31 +278,25 @@ class Correios extends AbstractCarrier implements CarrierInterface
         $arrayConsult = [];
 
         if (count($this->_postingMethods)>0) {
-            foreach ($this->_postingMethods as $_method) {
-                if ($this->_cubic<=10) {
-                    $correiosWeight = max($this->_weight, $this->_cubic);
-                } else {
-                    $correiosWeight = $this->_cubic;
-                }
+            $_postingMethods = join(',', $this->_postingMethods);
 
-                $url_d = static::WEBSERVICE_URL;
+            $url_d = static::WEBSERVICE_URL;
 
-                if ($this->_login != "") {
-                    $url_d .= "&nCdEmpresa=" . $this->_login . "&sDsSenha=" . $this->_password;
-                }
-                $url_d .= "&nCdFormato=1&nCdServico=" . $_method . "&nVlComprimento=" .
-                    $package['depth'] . "&nVlAltura=" . $package['height'] . "&nVlLargura=" .
-                    $package['width'] . "&sCepOrigem=" . $this->_origPostcode . "&sCdMaoPropria=" .
-                    $this->_ownerHands . "&sCdAvisoRecebimento=" . $this->_proofOfDelivery . "&nVlPeso=" .
-                    $package['weight'] . "&sCepDestino=" . $this->_destinationPostCode;
-
-                if ($this->_declaredValue) {
-                    $url_d .= "&nVlValorDeclarado=" . $package['value'];
-                }
-
-                $arrayConsult[] = $url_d;
-                $this->_helper->logMessage($url_d);
+            if ($this->_login != "") {
+                $url_d .= "&nCdEmpresa=" . $this->_login . "&sDsSenha=" . $this->_password;
             }
+            $url_d .= "&nCdFormato=1&nCdServico=" . $_postingMethods . "&nVlComprimento=" .
+                $package['depth'] . "&nVlAltura=" . $package['height'] . "&nVlLargura=" .
+                $package['width'] . "&sCepOrigem=" . $this->_origPostcode . "&sCdMaoPropria=" .
+                $this->_ownerHands . "&sCdAvisoRecebimento=" . $this->_proofOfDelivery . "&nVlPeso=" .
+                $package['weight'] . "&sCepDestino=" . $this->_destinationPostCode;
+
+            if ($this->_declaredValue) {
+                $url_d .= "&nVlValorDeclarado=" . $package['value'];
+            }
+
+            $arrayConsult[] = $url_d;
+            $this->_helper->logMessage($url_d);
         }
 
         return $arrayConsult;
@@ -449,7 +322,7 @@ class Correios extends AbstractCarrier implements CarrierInterface
         $this->_freeShippingMessage = $this->getConfig('general/free_shipping_message');
         $this->_declaredValue = $this->getConfig('general/declared_value');
         $this->_ownerHands = $this->getConfig('general/owner_hands') == 0 ? 'N' : 'Y';
-        $this->_handlingFee = $this->getConfig('general/handling_fee') ?? 0;
+        $this->_handlingFee = (float) $this->getConfig('general/handling_fee') ?? 0;
         $this->_availableBoxes = $this->getConfig('packages/available_boxes');
         $this->_mergePackages = $this->getConfig('packages/merge_packages') != 0;
         $this->_login = $this->getConfig('contract/login');
