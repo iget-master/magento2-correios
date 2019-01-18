@@ -115,6 +115,60 @@ class Data extends AbstractHelper
     }
 
     /**
+     * @param $trackingCode
+     * @return array
+     */
+    public function getOnlineTracking($trackingCode)
+    {
+        // @todo: This package depends on postmon.com.br free API that can disappear at any moment
+        // so we need to integrate with the more complicated correios API in the future.
+        $url = "https://correios.postmon.com.br/webservice/buscaEventos/?objetos={$trackingCode}";
+
+        try {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_HEADER, 0);
+            ob_start();
+            curl_exec($ch);
+            curl_close($ch);
+            $content = ob_get_contents();
+            ob_end_clean();
+
+            if ($content) {
+                $content = json_decode($content, true);
+            }
+        } catch (\Exception $e) {
+            $this->logMessage("Error in consult XML: ".$e->getMessage());
+
+            return [];
+        }
+
+        if (!array_key_exists('objeto', $content) || !count($content['objeto'])) {
+            return [];
+        }
+
+        if (array_key_exists('erro', $content['objeto'][0]) && $content['objeto'][0]['erro']) {
+            return [];
+        }
+
+        $progressDetail = [];
+        foreach ($content['objeto'][0]['evento'] as $event) {
+            $date = implode('-', array_reverse(explode('/', $event['data'])));
+            $time = explode(':', $event['hora']);
+            $time = $time[0] . ':' . $time[1] . ':00';
+
+            $progressDetail[] = [
+                "activity" => $event['descricao'],
+                "deliverydate" => $date, // YYYY-MM-DD
+                "deliverytime" => $time, // HH:MM:SS
+                "deliverylocation" => $event['local'],
+            ];
+        }
+
+        return $progressDetail;
+    }
+
+    /**
      * @param $urlsArray
      * @param bool $isOffline
      * @return array

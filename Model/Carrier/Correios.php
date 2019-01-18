@@ -34,7 +34,7 @@ use Iget\Correios\Model\CotacoesRepository;
 
 class Correios extends AbstractCarrier implements CarrierInterface
 {
-    const WEBSERVICE_URL = "http://ws1.correios.com.br/calculador/CalcPrecoPrazo.aspx?StrRetorno=xml";
+    const WEBSERVICE_URL = "http://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx?StrRetorno=xml";
 
     protected $_code = 'correios';
     protected $_scopeConfig;
@@ -247,8 +247,11 @@ class Correios extends AbstractCarrier implements CarrierInterface
      */
     protected function _getTracking($code)
     {
+        $progressDetail = [];
+
         return array(
-            'url' => 'http://www.linkcorreios.com.br/?id='.$code
+            'url' => 'http://www.linkcorreios.com.br/?id='.$code,
+            'progressdetail' => $this->_helper->getOnlineTracking($code),
         );
     }
 
