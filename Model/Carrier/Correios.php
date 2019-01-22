@@ -60,6 +60,7 @@ class Correios extends AbstractCarrier implements CarrierInterface
     protected $_statusFactory;
     protected $_handlingFee;
     private $_availableBoxes;
+    private $_freeZipRanges;
     private $_mergePackages;
 
     //Shipping Result
@@ -185,6 +186,8 @@ class Correios extends AbstractCarrier implements CarrierInterface
 
         $methods = [];
 
+        $isFreeShipping = $this->isFreeShipping($request);
+
         foreach ($packages as $package) {
             // @todo: encontrar uma forma de fazer o cache das respostas deste método
             $quotes = $this->_helper->getOnlineShippingQuotes(
@@ -216,7 +219,7 @@ class Correios extends AbstractCarrier implements CarrierInterface
             $rateMethod->setMethod('correios-' . $methodCode);
             $rateMethod->setMethodTitle($method['name']);
 
-            if ($request->getFreeShipping() && $this->_freeMethod == $methodCode) {
+            if ($isFreeShipping && $this->_freeMethod == $methodCode) {
                 $rateMethod->setPrice(0);
 
                 if ($this->_freeShippingMessage) {
@@ -239,6 +242,24 @@ class Correios extends AbstractCarrier implements CarrierInterface
     public function isTrackingAvailable()
     {
         return true;
+    }
+
+    protected function isFreeShipping(RateRequest $request)
+    {
+        if ($request->getFreeShipping()) {
+            return true;
+        }
+
+        $zip = preg_replace('/[^0-9]/', '', $this->_destinationPostCode);
+        $value = $request->getPackageValue();
+
+        foreach($this->_freeZipRanges as $zipRange) {
+            if ($zip >= $zipRange['start'] && $zip <= $zipRange['end'] && $value > $zipRange['minimum_price']) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -327,6 +348,7 @@ class Correios extends AbstractCarrier implements CarrierInterface
         $this->_ownerHands = $this->getConfig('general/owner_hands') == 0 ? 'N' : 'Y';
         $this->_handlingFee = (float) $this->getConfig('general/handling_fee') ?? 0;
         $this->_availableBoxes = $this->getConfig('packages/available_boxes');
+        $this->_freeZipRanges = json_decode($this->getConfig('free_shipping/by_zip_range'), true);
         $this->_mergePackages = $this->getConfig('packages/merge_packages') != 0;
         $this->_login = $this->getConfig('contract/login');
         $this->_password = $this->getConfig('contract/password');

@@ -69,6 +69,15 @@
                         <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     </field>
                 </group>
+                <group id="free_shipping" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Free Shipping behavior</label>
+                    <field id="by_zip_range" translate="label" sortOrder="25" showInDefault="1" showInWebsite="1" showInStore="1" >
+                        <label>Free ZIP ranges</label>
+                        <frontend_model>Iget\Correios\Block\System\Config\Form\Field\ZipRanges</frontend_model>
+                        <backend_model>Magento\Config\Model\Config\Backend\Serialized\ArraySerialized</backend_model>
+                        <comment><![CDATA[ZIP codes between this range will ship free with the <strong>Free Method</strong> defined on <strong>Post Methods</strong> tab]]></comment>
+                    </field>
+                </group>
                 <group id="packages" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Packaging behavior</label>
                     <comment>Configure here how the module should behave to decide package sizing. This will allow you to get better shipping fare approximation.</comment>
