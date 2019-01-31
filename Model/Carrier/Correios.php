@@ -95,6 +95,16 @@ class Correios extends AbstractCarrier implements CarrierInterface
      */
     protected $_rateMethodFactory;
 
+    /**
+     * @var string
+     */
+    private $_sroLogin;
+
+    /**
+     * @var string
+     */
+    private $_sroPassword;
+
 
     /**
      * Correios constructor.
@@ -268,12 +278,17 @@ class Correios extends AbstractCarrier implements CarrierInterface
      */
     protected function _getTracking($code)
     {
-        $progressDetail = [];
+        $_sroLogin = $this->getConfig('sro/login');
+        $_sroPassword = $this->getConfig('sro/password');
 
-        return array(
-            'url' => 'http://www.linkcorreios.com.br/?id='.$code,
-            'progressdetail' => $this->_helper->getOnlineTracking($code),
-        );
+        if (!$_sroLogin || !$_sroPassword) {
+            return [];
+        }
+
+        return [
+//            'url' => 'http://www.linkcorreios.com.br/?id='.$code,
+            'progressdetail' => $this->_helper->getOnlineTracking($code, $_sroLogin, $_sroPassword),
+        ];
     }
 
     /**

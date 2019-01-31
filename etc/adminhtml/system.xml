@@ -108,6 +108,16 @@
                         <label>Contract Password</label>
                     </field>
                 </group>
+                <group id="sro" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Correios Web SRO credentials</label>
+                    <comment>Enter your Web SRO credentials to allow tracking packages directly from user orders</comment>
+                    <field id="login" translate="label" type="text" sortOrder="4" showInDefault="1" showInWebsite="1" showInStore="0">
+                        <label>Login</label>
+                    </field>
+                    <field id="password" translate="label" type="password" sortOrder="5" showInDefault="1" showInWebsite="1" showInStore="0">
+                        <label>Password</label>
+                    </field>
+                </group>
                 <group id="post_methods" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Post Methods</label>
                     <field id="enabled_methods" translate="label" type="multiselect" sortOrder="2" showInDefault="1" showInWebsite="1" showInStore="0">

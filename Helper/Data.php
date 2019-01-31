@@ -57,17 +57,29 @@ class Data extends AbstractHelper
      * @var mixed
      */
     private $weightUnit;
+    /**
+     * @var Magento\Framework\Stdlib\DateTime\TimezoneInterface
+     */
+    private $timezone;
+    /**
+     * @var \Magento\Framework\Stdlib\DateTime\DateTime
+     */
+    private $date;
 
     /**
      * Data constructor.
      * @param ProductRepository $productRepository
      * @param ScopeConfigInterface $scopeConfig
      * @param ResourceModel $resourceModel
+     * @param \Magento\Framework\Stdlib\DateTime\TimezoneInterface $timezone
+     * @param \Magento\Framework\Stdlib\DateTime\DateTime $date
      */
     public function __construct(
         ProductRepository $productRepository,
         ScopeConfigInterface $scopeConfig,
-        ResourceModel $resourceModel
+        ResourceModel $resourceModel,
+        \Magento\Framework\Stdlib\DateTime\TimezoneInterface $timezone,
+        \Magento\Framework\Stdlib\DateTime\DateTime $date
     ) {
         $this->storeScope = ScopeInterface::SCOPE_STORE;
         $this->scopeConfig = $scopeConfig;
@@ -77,6 +89,8 @@ class Data extends AbstractHelper
         $this->logger = new Logger();
         $this->logger->addWriter($writer);
         $this->weightUnit = $this->getWeightUnit();
+        $this->timezone = $timezone;
+        $this->date = $date;
     }
 
     /**
@@ -118,51 +132,63 @@ class Data extends AbstractHelper
      * @param $trackingCode
      * @return array
      */
-    public function getOnlineTracking($trackingCode)
+    public function getOnlineTracking($trackingCode, $login, $password)
     {
-        // @todo: This package depends on postmon.com.br free API that can disappear at any moment
-        // so we need to integrate with the more complicated correios API in the future.
-        $url = "https://correios.postmon.com.br/webservice/buscaEventos/?objetos={$trackingCode}";
+        $wdsl = "http://webservice.correioss.com.br/service/rastro/Rastro.wsdl";
 
         try {
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_HEADER, 0);
-            ob_start();
-            curl_exec($ch);
-            curl_close($ch);
-            $content = ob_get_contents();
-            ob_end_clean();
+            $client = new \SoapClient($wdsl);
 
-            if ($content) {
-                $content = json_decode($content, true);
-            }
+            $response = $client->buscaEventos([
+                'usuario'   => $login,
+                'senha'     => $password,
+                'tipo'      => 'L',
+                'resultado' => 'T',
+                'lingua'    => '101',
+                'objetos' => $trackingCode
+            ]);
         } catch (\Exception $e) {
-            $this->logMessage("Error in consult XML: ".$e->getMessage());
-
-            return [];
-        }
-
-        if (!array_key_exists('objeto', $content) || !count($content['objeto'])) {
-            return [];
-        }
-
-        if (array_key_exists('erro', $content['objeto'][0]) && $content['objeto'][0]['erro']) {
-            return [];
-        }
-
-        $progressDetail = [];
-        foreach ($content['objeto'][0]['evento'] as $event) {
-            $date = implode('-', array_reverse(explode('/', $event['data'])));
-            $time = explode(':', $event['hora']);
-            $time = $time[0] . ':' . $time[1] . ':00';
-
-            $progressDetail[] = [
-                "activity" => $event['descricao'],
-                "deliverydate" => $date, // YYYY-MM-DD
-                "deliverytime" => $time, // HH:MM:SS
-                "deliverylocation" => $event['local'],
+            return [
+                [
+                    "activity" => 'Rastreamento indisponível no momento. Tente novamente mais tarde.',
+                    "deliverydate" => $this->date->date('Y-m-d', $this->timezone->scopeTimeStamp()),
+                    "deliverytime" => $this->date->date('H:i:s', $this->timezone->scopeTimeStamp()),
+                    "deliverylocation" => '-',
+                ]
             ];
+        }
+
+
+        $response = $response->return;
+        $progressDetail = [];
+
+        if ($response->qtd == 1) {
+            if (isset($response->objeto->erro)) {
+                $progressDetail = [
+                    [
+                        "activity" => $response->objeto->erro,
+                        "deliverydate" => $this->date->date('Y-m-d', $this->timezone->scopeTimeStamp()),
+                        "deliverytime" => $this->date->date('H:i:s', $this->timezone->scopeTimeStamp()),
+                        "deliverylocation" => '-',
+                    ]
+                ];
+            } else {
+
+                $events = is_array($response->objeto->evento) ? $response->objeto->evento : [ $response->objeto->evento ];
+
+                foreach ($events as $event) {
+                    $date = implode('-', array_reverse(explode('/', $event->data)));
+                    $time = explode(':', $event->hora);
+                    $time = $time[0] . ':' . $time[1] . ':00';
+
+                    $progressDetail[] = [
+                        "activity" => $event->descricao,
+                        "deliverydate" => $date, // YYYY-MM-DD
+                        "deliverytime" => $time, // HH:MM:SS
+                        "deliverylocation" => $event->local . ' - ' . $event->cidade,
+                    ];
+                }
+            }
         }
 
         return $progressDetail;
