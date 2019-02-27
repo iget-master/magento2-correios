@@ -4,10 +4,9 @@
 
     <!-- Specify the country ISO code-->
     <zip countryCode="BR">
-        <!-- You can specify several patterns for one country -->
         <codes>
-            <code id="long" active="true" example="00000-000">^[0-9]{5}\-[0-9]{3}$</code>
-            <code id="short" active="true" example="00000000">^[0-9]{8}$</code>
+            <code id="pattern_1" active="true" example="12345-123">^[0-9]{5}\-[0-9]{3}$</code>
+            <code id="pattern_2" active="true" example="12345123">^[0-9]{8}$</code>
         </codes>
     </zip>
 </config>
