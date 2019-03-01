@@ -2,8 +2,8 @@
     "name": "iget/magento2-correios",
     "description": "Integrate Brazilian Correios shipping carrier to Magento 2",
     "type": "magento2-module",
-    "version": "1.0.0-alpha0",
-    "license": "OSL 3.0",
+    "version": "1.0.0",
+    "license": "OSL-3.0",
     "authors": [
         {
             "name": "Elias Soares",
