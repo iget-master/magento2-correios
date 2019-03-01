@@ -316,6 +316,16 @@ class Correios extends AbstractCarrier implements CarrierInterface
     {
         $arrayConsult = [];
 
+        // Limit minimum dimensions
+        $width = max($package['width'], 16);
+        $height = max($package['height'], 2);
+        $depth = max($package['depth'], 11);
+
+        // Limit maximum dimensions
+        $width = min($width, 90);
+        $height = min($height, 90);
+        $depth = min($depth, 90);
+
         if (count($this->_postingMethods)>0) {
             $_postingMethods = join(',', $this->_postingMethods);
 
@@ -325,8 +335,8 @@ class Correios extends AbstractCarrier implements CarrierInterface
                 $url_d .= "&nCdEmpresa=" . $this->_login . "&sDsSenha=" . $this->_password;
             }
             $url_d .= "&nCdFormato=1&nCdServico=" . $_postingMethods . "&nVlComprimento=" .
-                $package['depth'] . "&nVlAltura=" . $package['height'] . "&nVlLargura=" .
-                $package['width'] . "&sCepOrigem=" . $this->_origPostcode . "&sCdMaoPropria=" .
+                $depth . "&nVlAltura=" . $height . "&nVlLargura=" .
+                $width . "&sCepOrigem=" . $this->_origPostcode . "&sCdMaoPropria=" .
                 $this->_ownerHands . "&sCdAvisoRecebimento=" . $this->_proofOfDelivery . "&nVlPeso=" .
                 $package['weight'] . "&sCepDestino=" . $this->_destinationPostCode;
 
