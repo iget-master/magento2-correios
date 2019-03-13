@@ -572,7 +572,7 @@ class Data extends AbstractHelper
                     'height' => $item['height'],
                     'depth' => $item['depth'],
                     'weight' => $item['weight'],
-                    'value' => $item['price'],
+                    'value' => $item['value'],
                 ];
             }
         }
