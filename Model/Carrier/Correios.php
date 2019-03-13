@@ -317,9 +317,9 @@ class Correios extends AbstractCarrier implements CarrierInterface
         $arrayConsult = [];
 
         // Limit minimum dimensions
-        $width = max($package['width'], 16);
+        $width = max($package['width'], 11);
         $height = max($package['height'], 2);
-        $depth = max($package['depth'], 11);
+        $depth = max($package['depth'], 16);
 
         // Limit maximum dimensions
         $width = min($width, 90);
