@@ -18,7 +18,7 @@ class AvailableBoxes extends AbstractSource
     public function getAllOptions()
     {
         $availableBoxes = json_decode($this->_scopeConfig->getValue(
-            "carriers/Iget_Correios/packages/available_boxes",
+            "carriers/correios/packages/available_boxes",
             ScopeInterface::SCOPE_STORE
         ), true);
 

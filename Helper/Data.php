@@ -120,7 +120,7 @@ class Data extends AbstractHelper
      * @param string $namespace
      * @return mixed
      */
-    public function getConfig($key, $namespace = 'carriers/Iget_Correios')
+    public function getConfig($key, $namespace = 'carriers/correios')
     {
         return $this->scopeConfig->getValue(
             "{$namespace}/{$key}",
@@ -202,31 +202,31 @@ class Data extends AbstractHelper
     public function getOnlineShippingQuotes($urlsArray, $isOffline = false)
     {
         $deliveryMessage = (string)$this->scopeConfig->getValue(
-            "carriers/Iget_Correios/deliverydays_message",
+            "carriers/correios/deliverydays_message",
             $this->storeScope
         );
         if ($deliveryMessage === "") {
             $deliveryMessage = "%s - Em média %d dia(s)";
         }
         $showDeliveryDays = (bool)$this->scopeConfig->getValue(
-            "carriers/Iget_Correios/show_deliverydays",
+            "carriers/correios/show_deliverydays",
             $this->storeScope
         );
         $addDeliveryDays = (int)$this->scopeConfig->getValue(
-            "carriers/Iget_Correios/add_deliverydays",
+            "carriers/correios/add_deliverydays",
             $this->storeScope
         );
         $handlingFee = 0;
         if ($this->scopeConfig->getValue(
-            "carriers/Iget_Correios/handling_fee",
+            "carriers/correios/handling_fee",
             $this->storeScope
         ) != "") {
             if (is_numeric($this->scopeConfig->getValue(
-                "carriers/Iget_Correios/handling_fee",
+                "carriers/correios/handling_fee",
                 $this->storeScope
             ))) {
                 $handlingFee = $this->scopeConfig->getValue(
-                    "carriers/Iget_Correios/handling_fee",
+                    "carriers/correios/handling_fee",
                     $this->storeScope
                 );
             }
@@ -357,7 +357,7 @@ class Data extends AbstractHelper
     {
         $result = $weight;
         if (((string)$this->scopeConfig->getValue(
-            "carriers/Iget_Correios/weight_type",
+            "carriers/correios/weight_type",
             $this->storeScope
         ) === 'gr')) {
             $result = number_format($weight/1000, 2, '.', '');
@@ -378,7 +378,7 @@ class Data extends AbstractHelper
         }
 
         $maxWeight = $this->scopeConfig->getValue(
-            "carriers/Iget_Correios/max_weight",
+            "carriers/correios/max_weight",
             $this->storeScope
         );
 
@@ -598,22 +598,22 @@ class Data extends AbstractHelper
         $sumMax = 160;
         $coefficient = 6000;
         $validate = (bool)$this->scopeConfig->getValue(
-            'carriers/Iget_Correios/validate_dimensions',
+            'carriers/correios/validate_dimensions',
             $this->storeScope
         );
         foreach ($items as $item) {
             $productItem = $item->getProduct();
             $product = $this->productRepository->getById($productItem->getId());
             $width = ((int)$product->getData('correios_width') === 0) ? (int)$this->scopeConfig->getValue(
-                "carriers/Iget_Correios/default_width",
+                "carriers/correios/default_width",
                 $this->storeScope
             ) : (int)$product->getData('correios_width');
             $height = ((int)$product->getData('correios_height') === 0) ? (int)$this->scopeConfig->getValue(
-                "carriers/Iget_Correios/default_height",
+                "carriers/correios/default_height",
                 $this->storeScope
             ) : (int)$product->getData('correios_height');
             $depth = ((int)$product->getData('correios_depth') === 0) ? (int)$this->scopeConfig->getValue(
-                "carriers/Iget_Correios/default_depth",
+                "carriers/correios/default_depth",
                 $this->storeScope
             ) : (int)$product->getData('correios_depth');
 
@@ -634,7 +634,7 @@ class Data extends AbstractHelper
     public function logMessage($message)
     {
         if ((bool)($this->scopeConfig->getValue(
-            "carriers/Iget_Correios/enabled_log",
+            "carriers/correios/enabled_log",
             $this->storeScope
         ))) {
             $this->logger->info($message);
@@ -658,7 +658,7 @@ class Data extends AbstractHelper
             $lastUpdateDatetime = null;
         }
         $daysUpdate = $this->scopeConfig->getValue(
-            "carriers/Iget_Correios/maxdays_update",
+            "carriers/correios/maxdays_update",
             $this->storeScope
         );
         if (!is_numeric($daysUpdate)) {

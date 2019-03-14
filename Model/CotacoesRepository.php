@@ -205,7 +205,7 @@ class CotacoesRepository implements CotacoesInterface
     public function populate()
     {
         $postingMethods = explode(",", $this->scopeConfig->getValue(
-            'carriers/Iget_Correios/posting_methods'
+            'carriers/correios/posting_methods'
         ));
         $postingMethods = $this->helper->getPostMethodCodes($postingMethods);
         if ($this->cotacoesFactory->create()->getCollection()->count() > 0) {

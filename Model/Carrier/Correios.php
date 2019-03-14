@@ -225,7 +225,7 @@ class Correios extends AbstractCarrier implements CarrierInterface
         foreach ($methods as $methodCode => $method) {
             $rateMethod = $this->_rateMethodFactory->create();
             $rateMethod->setCarrier('correios');
-            $rateMethod->setCarrierTitle($this->getConfig('carriers/Iget_Correios/general/name') ?? "Correios");
+            $rateMethod->setCarrierTitle($this->getConfig('carriers/correios/general/name') ?? "Correios");
             $rateMethod->setMethod('correios-' . $methodCode);
             $rateMethod->setMethodTitle($method['name']);
 
@@ -356,7 +356,7 @@ class Correios extends AbstractCarrier implements CarrierInterface
      * @param string $namespace
      * @return mixed
      */
-    protected function getConfig($key, $namespace = 'carriers/Iget_Correios')
+    protected function getConfig($key, $namespace = 'carriers/correios')
     {
         return $this->_helper->getConfig($key, $namespace);
     }
