@@ -36,7 +36,7 @@ class Correios extends AbstractCarrier implements CarrierInterface
 {
     const WEBSERVICE_URL = "http://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx?StrRetorno=xml";
 
-    protected $_code = 'correios';
+    protected $_code = 'Iget_Correios';
     protected $_scopeConfig;
     protected $_storeScope;
     protected $_session;
