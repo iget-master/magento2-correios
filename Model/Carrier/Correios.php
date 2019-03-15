@@ -159,7 +159,7 @@ class Correios extends AbstractCarrier implements CarrierInterface
      */
     public function getAllowedMethods()
     {
-        return ['correios' => "correios"];
+        return [$this->_code => 'Correios'];
     }
 
     /**
@@ -224,7 +224,7 @@ class Correios extends AbstractCarrier implements CarrierInterface
 
         foreach ($methods as $methodCode => $method) {
             $rateMethod = $this->_rateMethodFactory->create();
-            $rateMethod->setCarrier('correios');
+            $rateMethod->setCarrier($this->_code);
             $rateMethod->setCarrierTitle($this->getConfig('carriers/correios/general/name') ?? "Correios");
             $rateMethod->setMethod('correios-' . $methodCode);
             $rateMethod->setMethodTitle($method['name']);
@@ -366,7 +366,7 @@ class Correios extends AbstractCarrier implements CarrierInterface
      */
     protected function prepare()
     {
-        $this->_enabled = $this->getConfig('general/active');
+        $this->_enabled = $this->getConfig('active');
         $this->_proofOfDelivery = $this->getConfig('general/proof_of_delivery') == 0 ? 'N' : 'Y';
         $this->_freeShippingMessage = $this->getConfig('general/free_shipping_message');
         $this->_declaredValue = $this->getConfig('general/declared_value');
