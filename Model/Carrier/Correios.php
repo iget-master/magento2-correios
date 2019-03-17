@@ -294,7 +294,7 @@ class Correios extends AbstractCarrier implements CarrierInterface
                     });
                     break;
             }
-            return $matches[0];
+            return $matches[0]['cost'];
         }
 
         return false;
