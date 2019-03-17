@@ -4,6 +4,8 @@
 
 This module was based on [Imagination Media Correios extension](https://bitbucket.org/imagination-media/correios/wiki/Home).
 
+**NOTE:** This package is not production ready yet. Also it doesn't have documentation yet.
+
 #### License
 
 OSL 3.0

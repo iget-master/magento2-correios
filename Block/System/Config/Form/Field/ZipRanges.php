@@ -47,7 +47,15 @@ class ZipRanges extends AbstractFieldArray
         $this->addColumn(
             'minimum_price',
             [
-                'label' => __('Minimum Price'),
+                'label' => __('Minimum Order'),
+                'class' => 'validate-no-empty validate-number'
+            ]
+        );
+
+        $this->addColumn(
+            'cost',
+            [
+                'label' => __('Cost'),
                 'class' => 'validate-no-empty validate-number'
             ]
         );

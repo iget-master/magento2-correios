@@ -69,13 +69,18 @@
                         <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     </field>
                 </group>
-                <group id="free_shipping" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Free Shipping behavior</label>
+                <group id="flat_rate" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Flat-rate</label>
                     <field id="by_zip_range" translate="label" sortOrder="25" showInDefault="1" showInWebsite="1" showInStore="1" >
-                        <label>Free ZIP ranges</label>
+                        <label>By ZIP range</label>
                         <frontend_model>Iget\Correios\Block\System\Config\Form\Field\ZipRanges</frontend_model>
                         <backend_model>Magento\Config\Model\Config\Backend\Serialized\ArraySerialized</backend_model>
                         <comment><![CDATA[ZIP codes between this range will ship free with the <strong>Free Method</strong> defined on <strong>Post Methods</strong> tab]]></comment>
+                    </field>
+                    <field id="priority" translate="label" type="select" sortOrder="2" showInDefault="1" showInWebsite="1" showInStore="0">
+                        <label>Give priority to</label>
+                        <comment>Define how to decide what flat-rate choose if multiple match.</comment>
+                        <source_model>Iget\Correios\Model\Config\Source\FlatRatePriority</source_model>
                     </field>
                 </group>
                 <group id="packages" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">

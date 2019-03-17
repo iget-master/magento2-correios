@@ -246,7 +246,6 @@ class Data extends AbstractHelper
                 curl_close($ch);
                 $content = ob_get_contents();
                 ob_end_clean();
-
                 if ($content) {
                     $xml = new \SimpleXMLElement($content);
                 }

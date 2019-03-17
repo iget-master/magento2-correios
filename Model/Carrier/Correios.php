@@ -13,6 +13,7 @@
 
 namespace Iget\Correios\Model\Carrier;
 
+use Iget\Correios\Model\Config\Source\FlatRatePriority;
 use Iget\Correios\Model\Config\Source\FunctionMode;
 use Psr\Log\LoggerInterface;
 use Magento\Store\Model\ScopeInterface;
@@ -60,7 +61,8 @@ class Correios extends AbstractCarrier implements CarrierInterface
     protected $_statusFactory;
     protected $_handlingFee;
     private $_availableBoxes;
-    private $_freeZipRanges;
+    private $_flatRateZipRanges;
+    private $_flatRatePriority;
     private $_mergePackages;
 
     //Shipping Result
@@ -196,7 +198,11 @@ class Correios extends AbstractCarrier implements CarrierInterface
 
         $methods = [];
 
-        $isFreeShipping = $this->isFreeShipping($request);
+        if ($request->getFreeShipping()) {
+            $flatRate = 0;
+        } else {
+            $flatRate = $this->getFlatRate($request);
+        }
 
         foreach ($packages as $package) {
             // @todo: encontrar uma forma de fazer o cache das respostas deste método
@@ -229,8 +235,8 @@ class Correios extends AbstractCarrier implements CarrierInterface
             $rateMethod->setMethod('correios-' . $methodCode);
             $rateMethod->setMethodTitle($method['name']);
 
-            if ($isFreeShipping && $this->_freeMethod == $methodCode) {
-                $rateMethod->setPrice(0);
+            if ($flatRate !== false && $this->_freeMethod == $methodCode) {
+                $rateMethod->setPrice($flatRate);
 
                 if ($this->_freeShippingMessage) {
                     $rateMethod->setMethodTitle($method['name'] . " ({$this->_freeShippingMessage})");
@@ -254,19 +260,41 @@ class Correios extends AbstractCarrier implements CarrierInterface
         return true;
     }
 
-    protected function isFreeShipping(RateRequest $request)
+    protected function getFlatRate(RateRequest $request)
     {
-        if ($request->getFreeShipping()) {
-            return true;
-        }
-
         $zip = preg_replace('/[^0-9]/', '', $this->_destinationPostCode);
         $value = $request->getPackageValue();
 
-        foreach($this->_freeZipRanges as $zipRange) {
+        $matches = [];
+
+        foreach($this->_flatRateZipRanges as $zipRange) {
             if ($zip >= $zipRange['start'] && $zip <= $zipRange['end'] && $value > $zipRange['minimum_price']) {
-                return true;
+                $matches[] = $zipRange;
             }
+        }
+
+        if (count($matches) > 0) {
+            switch ($this->_flatRatePriority) {
+                case FlatRatePriority::PRIORITY_MOST_SPECIFIC:
+                    usort($matches, function($a, $b) {
+                       $a = $a['end'] - $a['start'];
+                       $b = $b['end'] - $b['start'];
+
+                       return $a > $b;
+                    });
+                    break;
+                case FlatRatePriority::PRIORITY_CHEAPEST:
+                    usort($matches, function($a, $b) {
+                        return $a['cost'] > $b['cost'];
+                    });
+                    break;
+                case FlatRatePriority::PRIORITY_EXPENSIVEST:
+                    usort($matches, function($a, $b) {
+                        return $a['cost'] < $b['cost'];
+                    });
+                    break;
+            }
+            return $matches[0];
         }
 
         return false;
@@ -373,7 +401,8 @@ class Correios extends AbstractCarrier implements CarrierInterface
         $this->_ownerHands = $this->getConfig('general/owner_hands') == 0 ? 'N' : 'Y';
         $this->_handlingFee = (float) $this->getConfig('general/handling_fee') ?? 0;
         $this->_availableBoxes = $this->getConfig('packages/available_boxes');
-        $this->_freeZipRanges = json_decode($this->getConfig('free_shipping/by_zip_range'), true);
+        $this->_flatRateZipRanges = json_decode($this->getConfig('flat_rate/by_zip_range'), true);
+        $this->_flatRatePriority = $this->getConfig('flat_rate/priority');
         $this->_mergePackages = $this->getConfig('packages/merge_packages') != 0;
         $this->_login = $this->getConfig('contract/login');
         $this->_password = $this->getConfig('contract/password');
